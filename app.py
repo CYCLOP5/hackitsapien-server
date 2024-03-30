@@ -8,6 +8,7 @@ from sklearn.metrics import accuracy_score
 import joblib
 from finalpredicted import predict_deepfake
 import threading
+from queue import Queue
 
 def extract_features(file_path):
     try:
@@ -28,14 +29,14 @@ def classify_audio(example_file_path):
     else:
         return "Error extracting features from the example file."
     
-def check_video(uploaded_video_file, method):
+def check_video(uploaded_video_file, method, queue):
     with st.spinner("Checking video..."):
         input_video_file_path = "uploaded_video.mp4"
         with open(input_video_file_path, "wb") as f:
             f.write(uploaded_video_file.getbuffer())
         fake_prob, real_prob, pred = predict_deepfake(input_video_file_path, method)
         
-    return fake_prob, real_prob, pred
+    queue.put((fake_prob, real_prob, pred))
 
 def main():
     st.title("Deepfake Checker")
@@ -65,7 +66,13 @@ def main():
         method = method_mapping[selected_option]
 
         if st.button("Check Video"):
-            fake_prob, real_prob, pred = check_video(uploaded_video_file, method)
+            queue = Queue()
+            thread = threading.Thread(target=check_video, args=(uploaded_video_file, method, queue))
+            thread.start()
+
+            with st.spinner("Checking video..."):
+                thread.join()
+                fake_prob, real_prob, pred = queue.get()
 
             if pred is None:
                 st.error("Failed to detect DeepFakes in the video.")
