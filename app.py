@@ -7,6 +7,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 import joblib
 from finalpredicted import predict_deepfake
+import threading
 
 def extract_features(file_path):
     try:
@@ -26,6 +27,15 @@ def classify_audio(example_file_path):
         return f"{class_label} Audio File"
     else:
         return "Error extracting features from the example file."
+    
+def check_video(uploaded_video_file, method):
+    with st.spinner("Checking video..."):
+        input_video_file_path = "uploaded_video.mp4"
+        with open(input_video_file_path, "wb") as f:
+            f.write(uploaded_video_file.getbuffer())
+        fake_prob, real_prob, pred = predict_deepfake(input_video_file_path, method)
+        
+    return fake_prob, real_prob, pred
 
 def main():
     st.title("Deepfake Checker")
@@ -55,11 +65,7 @@ def main():
         method = method_mapping[selected_option]
 
         if st.button("Check Video"):
-            with st.spinner("Checking video..."):
-                input_video_file_path = "uploaded_video.mp4"
-                with open(input_video_file_path, "wb") as f:
-                    f.write(uploaded_video_file.getbuffer())
-                fake_prob, real_prob, pred = predict_deepfake(input_video_file_path, method)
+            fake_prob, real_prob, pred = check_video(uploaded_video_file, method)
 
             if pred is None:
                 st.error("Failed to detect DeepFakes in the video.")
@@ -77,5 +83,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
