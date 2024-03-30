@@ -29,18 +29,20 @@ def classify_audio(example_file_path):
 
 def main():
     st.title("Deepfake Checker")
-    st.write("This is a web application that allows users to upload audio and video files for classification and deepfake detection, respectively.")
+    st.write("This is a web application that allows users to upload audio and video files for deepfake detection.")
     
-    st.header("Audio Classification")
+    st.header("Audio Deepfake Detection")
     uploaded_audio_file = st.file_uploader("Upload Audio File", type=["wav"], key="audio_uploader")
     if uploaded_audio_file is not None:
         st.write("Uploaded audio file details:")
         audio_file_details = {"FileName": uploaded_audio_file.name, "FileType": uploaded_audio_file.type, "FileSize": uploaded_audio_file.size}
         st.write(audio_file_details)
 
-        if st.button("Classify Audio"):
-            audio_result = classify_audio(uploaded_audio_file)
+        if st.button("Check Audio"):
+            with st.spinner("Checking audio..."):
+                audio_result = classify_audio(uploaded_audio_file)
             st.write(audio_result)
+            
 
     st.header("Video Deepfake Detection")
     uploaded_video_file = st.file_uploader("Choose a video file", type=["mp4"], key="video_uploader")
