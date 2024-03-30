@@ -1,6 +1,10 @@
 import streamlit as st
+import os
+import shutil
 import librosa
 import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
 import joblib
 from finalpredicted import predict_deepfake
 
@@ -48,24 +52,30 @@ def main():
         selected_option = st.selectbox("Select method", list(method_mapping.keys()))
         st.video(uploaded_video_file)
 
+        method = method_mapping[selected_option]
+
         if st.button("Check Video"):
             with st.spinner("Checking video..."):
-                try:
-                    fake_prob, real_prob, pred = predict_deepfake(uploaded_video_file, method_mapping[selected_option])
-                    
-                    if pred is None:
-                        st.error("Failed to detect DeepFakes in the video.")
-                    else:
-                        label = "real" if pred == 0 else "deepfaked"
-                        probability = real_prob if pred == 0 else fake_prob
-                        probability = round(probability * 100, 4)
+                input_video_file_path = "uploaded_video.mp4"
+                with open(input_video_file_path, "wb") as f:
+                    f.write(uploaded_video_file.getbuffer())
+                fake_prob, real_prob, pred = predict_deepfake(input_video_file_path, method)
 
-                        if pred == 0:
-                            st.success(f"The video is {label}, with a probability of: {probability}%")
-                        else:
-                            st.error(f"The video is {label}, with a probability of: {probability}%")
-                except Exception as e:
-                    st.error(f"An error occurred: {str(e)}")
+            if pred is None:
+                st.error("Failed to detect DeepFakes in the video.")
+            else:
+                label = "real" if pred == 0 else "deepfaked"
+                probability = real_prob if pred == 0 else fake_prob
+                probability = round(probability * 100, 4)
+
+                if pred == 0:
+                    st.success(f"The video is {label}, with a probability of: {probability}%")
+                    shutil.rmtree("./output")
+                else:
+                    st.error(f"The video is {label}, with a probability of: {probability}%")
+                    shutil.rmtree("./output")
 
 if __name__ == "__main__":
     main()
+
+
