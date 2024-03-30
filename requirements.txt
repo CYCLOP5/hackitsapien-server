@@ -4,7 +4,6 @@ numpy
 joblib
 scikit-learn
 torch
-opencv-python
 PyYAML
 pandas
 torchvision
@@ -14,6 +13,7 @@ matplotlib
 seaborn
 timm
 tabulate
-tensorflow-cpu
+tensorflow
 facenet-pytorch
 moviepy
+opencv-python-headless

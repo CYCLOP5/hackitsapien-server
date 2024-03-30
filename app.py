@@ -20,7 +20,14 @@ def extract_features(file_path):
         return None
 
 def classify_audio(example_file_path):
-    loaded_model = joblib.load("./svm_model.joblib")
+    import os
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    os.chdir(current_dir)
+
+    loaded_model = joblib.load("svm_model.joblib")
+
     example_features = extract_features(example_file_path)
     if example_features is not None:
         prediction = loaded_model.predict([example_features])
