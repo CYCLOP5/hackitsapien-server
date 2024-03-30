@@ -50,8 +50,9 @@ def predict_deepfake(input_videofile, df_method, debug=False, verbose=False):
     model = DeepFakeDetectModel(frame_dim=model_params['imsize'], encoder_name=model_params['encoder_name'])
     if verbose:
         print(f'Loading model weights {model_path}')
-    check_point_dict = torch.load(model_path)
+    check_point_dict = torch.load(model_path, map_location=torch.device('cpu'))
     model.load_state_dict(check_point_dict['model_state_dict'])
+
     model = model.to(device)
     model.eval()
 
