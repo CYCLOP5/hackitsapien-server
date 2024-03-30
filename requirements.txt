@@ -8,6 +8,7 @@ opencv-python-headless
 PyYAML~=6.0.1
 pandas~=2.2.1
 torchvision~=0.17.2
+facenet-pytorch
 pillow~=10.2.0
 tqdm~=4.66.2
 matplotlib~=3.8.3
