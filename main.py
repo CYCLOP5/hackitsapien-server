@@ -32,7 +32,7 @@ def main():
     st.write("This is a web application that allows users to upload audio and video files for classification and deepfake detection, respectively.")
     
     st.header("Audio Classification")
-    uploaded_audio_file = st.file_uploader("Upload Audio File", type=["wav"])
+    uploaded_audio_file = st.file_uploader("Upload Audio File", type=["wav"], key="audio_uploader")
     if uploaded_audio_file is not None:
         st.write("Uploaded audio file details:")
         audio_file_details = {"FileName": uploaded_audio_file.name, "FileType": uploaded_audio_file.type, "FileSize": uploaded_audio_file.size}
@@ -43,15 +43,7 @@ def main():
             st.write(audio_result)
 
     st.header("Video Deepfake Detection")
-    uploaded_video_file = st.file_uploader("Choose a video file", type=["mp4"])
-    method_mapping = {"MTCNN": "plain_frames"}
-
-    if uploaded_video_file is not None:
-        selected_option = st.selectbox("Select method", list(method_mapping.keys()))
-        st.video(uploaded_video_file)
-
-    st.header("Video Deepfake Detection")
-    uploaded_video_file = st.file_uploader("Choose a video file", type=["mp4"])
+    uploaded_video_file = st.file_uploader("Choose a video file", type=["mp4"], key="video_uploader")
     method_mapping = {"MTCNN": "plain_frames"}
 
     if uploaded_video_file is not None:
