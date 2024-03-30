@@ -1,10 +1,6 @@
 import streamlit as st
-import os
-import shutil
 import librosa
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
 import joblib
 from finalpredicted import predict_deepfake
 
@@ -55,11 +51,7 @@ def main():
         if st.button("Check Video"):
             with st.spinner("Checking video..."):
                 try:
-                    input_video_file_path = "uploaded_video.mp4"
-                    with open(input_video_file_path, "wb") as f:
-                        f.write(uploaded_video_file.getbuffer())
-                    
-                    fake_prob, real_prob, pred = predict_deepfake(input_video_file_path, method_mapping[selected_option])
+                    fake_prob, real_prob, pred = predict_deepfake(uploaded_video_file, method_mapping[selected_option])
                     
                     if pred is None:
                         st.error("Failed to detect DeepFakes in the video.")
@@ -72,9 +64,8 @@ def main():
                             st.success(f"The video is {label}, with a probability of: {probability}%")
                         else:
                             st.error(f"The video is {label}, with a probability of: {probability}%")
-                finally:
-                    if os.path.exists(input_video_file_path):
-                        os.remove(input_video_file_path)
+                except Exception as e:
+                    st.error(f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":
     main()
