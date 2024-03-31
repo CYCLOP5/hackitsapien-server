@@ -47,6 +47,10 @@ def predict_deepfake(input_videofile, df_method, debug=False, verbose=False):
 
     if verbose:
         print(f'Detecting DeepFakes using method: {df_method}')
+
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    os.chdir(current_dir)
     model = DeepFakeDetectModel(frame_dim=model_params['imsize'], encoder_name=model_params['encoder_name'])
     if verbose:
         print(f'Loading model weights {model_path}')
