@@ -1,47 +1,38 @@
-import argparse
+import streamlit as st
 import os
-from tabulate import tabulate
-from data_utils.face_detection import *
-from deep_fake_detect.utils import *
-from deep_fake_detect.DeepFakeDetectModel import *
-import torchvision
-from data_utils.datasets import *
-import warnings
-import multiprocessing
-import sys
+import shutil
+import librosa
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+import joblib
+from finalpredicted import predict_deepfake
+import threading
+from queue import Queue
 
-warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
+def extract_features(file_path):
+    try:
+        audio, sample_rate = librosa.load(file_path, res_type='kaiser_fast') 
+        mfccs = np.mean(librosa.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=40).T, axis=0)
+        return mfccs
+    except Exception as e:
+        st.error(f"Error encountered while parsing file: {file_path}")
+        return None
 
+def classify_audio(example_file_path):
+    import os
 
-def predict_deepfake(input_videofile, df_method, debug=False, verbose=False):
-    num_workers = multiprocessing.cpu_count() - 2
-    model_params = dict()
-    model_params['batch_size'] = 32
-    model_params['imsize'] = 224
-    model_params['encoder_name'] = 'tf_efficientnet_b0_ns'
+    current_dir = os.path.dirname(os.path.abspath(__file__))
 
-    prob_threshold_fake = 0.5
-    fake_fraction = 0.5
+    os.chdir(current_dir)
 
-    use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda" if use_cuda else "cpu")
+    loaded_model = joblib.load("svm_model.joblib")
 
-    vid = os.path.basename(input_videofile)[:-4]
-    output_path = os.path.join("output", vid)
-    plain_faces_data_path = os.path.join(output_path, "plain_frames")
-    os.makedirs(output_path, exist_ok=True)
-    os.makedirs(plain_faces_data_path, exist_ok=True)
-
-    if verbose:
-        print(f'Extracting faces from the video')
-    # Generate JSON file with location of faces
-    extract_landmarks_from_video(input_videofile, output_path, overwrite=True)
-    # Crop faces from the video using the JSON file created earlier
-    crop_faces_from_video(input_videofile, output_path, plain_faces_data_path, overwrite=True)
-
-    if df_method == 'plain_frames':
-        model_path = 'final.chkpt'
-        frames_path = plain_faces_data_path
+    example_features = extract_features(example_file_path)
+    if example_features is not None:
+        prediction = loaded_model.predict([example_features])
+        class_label = "Real" if prediction[0] == 1 else "Fake"
+        return f"{class_label} Audio File"
     else:
         raise Exception("Unknown method")
 
@@ -88,75 +79,16 @@ def predict_deepfake(input_videofile, df_method, debug=False, verbose=False):
                 probabilities.extend(class_probability.squeeze())
                 all_filenames.extend(samples[1])
             else:
-                all_predicted_labels.append(predicted.squeeze())
-                probabilities.append(class_probability.squeeze())
-                all_filenames.append(samples[1])
+                label = "real" if pred == 0 else "deepfaked"
+                probability = real_prob if pred == 0 else fake_prob
+                probability = round(probability * 100, 4)
 
-        total_number_frames = len(probabilities)
-        probabilities = np.array(probabilities)
+                if pred == 0:
+                    st.success(f"The video is {label}, with a probability of: {probability}%")
+                    shutil.rmtree("./output")
+                else:
+                    st.error(f"The video is {label}, with a probability of: {probability}%")
+                    shutil.rmtree("./output")
 
-        fake_frames_high_prob = probabilities[probabilities >= prob_threshold_fake]
-        number_fake_frames = len(fake_frames_high_prob)
-        if number_fake_frames == 0:
-            fake_prob = 0
-        else:
-            fake_prob = round(sum(fake_frames_high_prob) / number_fake_frames, 4)
-
-        real_frames_high_prob = probabilities[probabilities < prob_threshold_fake]
-        number_real_frames = len(real_frames_high_prob)
-        if number_real_frames == 0:
-            real_prob = 0
-        else:
-            real_prob = 1 - round(sum(real_frames_high_prob) / number_real_frames, 4)
-
-        pred = pred_strategy(number_fake_frames, number_real_frames, total_number_frames,
-                             fake_fraction=fake_fraction)
-
-        if debug:
-            print(f'all {probabilities}')
-            print(f'real {real_frames_high_prob}')
-            print(f'fake {fake_frames_high_prob}')
-            print(
-                f"number_fake_frames={number_fake_frames}, number_real_frames={number_real_frames}, total_number_frames={total_number_frames}, fake_fraction={fake_fraction}")
-            print(f'fake_prob = {round(fake_prob * 100, 4)}%, real_prob = {round(real_prob * 100, 4)}%  pred={pred}')
-        return fake_prob, real_prob, pred
-
-
-def individual_test():
-    print_line()
-    debug = False
-    verbose = True
-    fake_prob, real_prob, pred = predict_deepfake(args.input_videofile, args.method, debug=debug, verbose=verbose)
-    if pred is None:
-        print_red('Failed to detect DeepFakes')
-        return
-
-    label = "REAL" if pred == 0 else "DEEP-FAKE"
-
-    probability = real_prob if pred == 0 else fake_prob
-    probability = round(probability * 100, 4)
-    print_line()
-    if pred == 0:
-        print_green(f'The video is {label}, probability={probability}%')
-    else:
-        print_red(f'The video is {label}, probability={probability}%')
-    print_line()
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='DeepFakes detection App. \n Use demo mode or provide input_videofile and method')
-    parser.add_argument('--input_videofile', action='store', help='Input video file')
-    parser.add_argument('--method', action='store', choices=['plain_frames'],
-                        help='Method type')
-    args = parser.parse_args()
-    if args.input_videofile is not None:
-        if args.method is None:
-            parser.print_help(sys.stderr)
-        else:
-            if os.path.isfile(args.input_videofile):
-                individual_test()
-            else:
-                print(f'input file not found ({args.input_videofile})')
-    else:
-        parser.print_help(sys.stderr)
+if __name__ == "__main__":
+    main()
