@@ -8,6 +8,7 @@ from sklearn.metrics import accuracy_score
 import joblib
 from finalpredicted import predict_deepfake
 
+# Function to extract features from audio file
 def extract_features(file_path):
     try:
         audio, sample_rate = librosa.load(file_path, res_type='kaiser_fast') 
@@ -17,23 +18,23 @@ def extract_features(file_path):
         st.error(f"Error encountered while parsing file: {file_path}")
         return None
 
+# Function to classify audio as real or fake
 def classify_audio(example_file_path):
-    import os
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-
-    os.chdir(current_dir)
-
+    # Load the pre-trained SVM model
     loaded_model = joblib.load("svm_model.joblib")
 
+    # Extract features from the audio file
     example_features = extract_features(example_file_path)
+    
     if example_features is not None:
+        # Make prediction
         prediction = loaded_model.predict([example_features])
         class_label = "Real" if prediction[0] == 1 else "Fake"
         return f"{class_label} Audio File"
     else:
         return "Error extracting features from the example file."
     
+# Function to check video for deepfake
 def check_video(uploaded_video_file, method):
     with st.spinner("Checking video..."):
         input_video_file_path = "uploaded_video.mp4"
@@ -43,10 +44,13 @@ def check_video(uploaded_video_file, method):
         
     return fake_prob, real_prob, pred
 
+# Main function to create Streamlit app
 def main():
+    # Set page title and description
     st.title("Deepfake Checker")
     st.write("This is a web application that allows users to upload audio and video files for deepfake detection.")
     
+    # Audio deepfake detection section
     st.header("Audio Deepfake Detection")
     uploaded_audio_file = st.file_uploader("Upload Audio File", type=["wav"], key="audio_uploader")
     if uploaded_audio_file is not None:
@@ -60,6 +64,7 @@ def main():
             st.write(audio_result)
             
 
+    # Video deepfake detection section
     st.header("Video Deepfake Detection")
     uploaded_video_file = st.file_uploader("Choose a video file", type=["mp4"], key="video_uploader")
     method_mapping = {"MTCNN": "plain_frames"}
@@ -68,10 +73,8 @@ def main():
         selected_option = st.selectbox("Select method", list(method_mapping.keys()))
         st.video(uploaded_video_file)
 
-        method = method_mapping[selected_option]
-
         if st.button("Check Video"):
-            fake_prob, real_prob, pred = check_video(uploaded_video_file, method)
+            fake_prob, real_prob, pred = check_video(uploaded_video_file, method_mapping[selected_option])
 
             if pred is None:
                 st.error("Failed to detect DeepFakes in the video.")
